@@ -1,0 +1,38 @@
+---
+## Provided by Playbook
+
+proxmox_api_host: "" # Provided by Playbook
+proxmox_api_user: "" # Provided by Playbook
+proxmox_api_password: "" # Provided by Playbook
+proxmox_network_lan: "" # Provided by Playbook
+proxmox_network_san: "" # Provided by Playbook
+proxmox_node: "" # Provided by Playbook
+virtual_machine_id: auto # Provided by Playbook
+virtual_machine_password: "ubuntu" # Provided by Playbook
+virtual_machine_user: "ubuntu" # Provided by Playbook
+virtual_machine_name: "testvm" # Provided by Playbook
+
+## Other, may be overridden in Playbook
+
+disk_expand_size: 17.8
+proxmox_template_id: 9999
+proxmox_volume_group: mpio
+virtual_machine_disk: scsi0
+virtual_machine_expand_disk: true
+virtual_machine_nameserver: "{{ vars[proxmox_network_lan].dnsservers | split(' ') }}"
+virtual_machine_searchdomain: "{{ vars[proxmox_network_lan].searchdomain | split(' ') }}"
+virtual_machine_start: true
+
+## Computed Values
+
+config_ip4: "{{ virtual_machine_ip4 + '/' + vars[proxmox_network_lan].ip4_netmask | string + ',gw=' + vars[proxmox_network_lan].ip4_gateway }}"
+config_ip6: ",ip6={{ virtual_machine_ip6 }}/{{ vars[proxmox_network_lan].ip6_netmask | string }},gw6={{ vars[proxmox_network_lan].ip6_gateway }}"
+config_san: "ip={{ virtual_machine_san }}/{{ san_netmask }}"
+san_netmask: "{{ vars[proxmox_network_san].ip4_netmask | default('') | string }}"
+san_prefix: "{{ vars[proxmox_network_san].ip4_prefix | default('') }}"
+ssh_keys: "{{ lookup('ansible.builtin.file', 'sshpub/' + virtual_machine_name + '.key.pub', errors='ignore') }}"
+virtual_machine_hex: "{{ '%04x' | format((virtual_machine_int | int * virtual_machine_int | int) | int) }}"
+virtual_machine_int: "{{ 1 if virtual_machine_id == 'auto' else (virtual_machine_id | string)[-3:] | int }}"
+virtual_machine_ip4: "{{ vars[proxmox_network_lan].ip4_prefix }}.{{ virtual_machine_int }}"
+virtual_machine_ip6: "{{ '' if not vars[proxmox_network_lan].ip6 else vars[proxmox_network_lan].ip6_prefix + '::' + virtual_machine_hex }}"
+virtual_machine_san: "{{ san_prefix + '.' + virtual_machine_int if san_prefix | length > 0 else '' }}"

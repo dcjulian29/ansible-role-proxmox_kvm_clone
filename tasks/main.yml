@@ -1,0 +1,154 @@
+---
+- name: Verify that python3-pip and libguestfs-tools are installed on the Proxmox node
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    state: present
+  delegate_to: "{{ proxmox_api_host }}"
+  loop:
+    - python3-pip
+    - libguestfs-tools
+
+- name: Verify if proxmoxer pip module is installed on the Proxmox node
+  ansible.builtin.pip:
+    name: proxmoxer
+    state: present
+  delegate_to: "{{ proxmox_api_host }}"
+
+- name: Retrieve template information
+  ansible.builtin.command:
+    cmd: "cat /etc/pve/qemu-server/{{ proxmox_template_id }}.conf"
+  register: template_data
+  changed_when: false
+  delegate_to: "{{ proxmox_api_host }}"
+
+- name: Parse template information
+  ansible.builtin.set_fact:
+    template_info: "{{ template_data.stdout | from_yaml }}"
+  delegate_to: "{{ proxmox_api_host }}"
+  failed_when: >
+    ((template_info.net1 is defined) and (virtual_machine_san | length == 0)) or
+    ((template_info.net1 is not defined) and (virtual_machine_san | length > 0))
+
+- name: "{{ 'Clone template ' + proxmox_template_id | string + ' to new virtual machine named: ' + virtual_machine_name }}"
+  community.general.proxmox_kvm:
+    api_user: "{{ proxmox_api_user }}"
+    api_password: "{{ proxmox_api_password }}"
+    api_host: "{{ proxmox_api_host }}"
+    clone: "{{ proxmox_template_id }}"
+    full: true
+    name: "{{ virtual_machine_name }}"
+    newid: "{{ virtual_machine_id if virtual_machine_id != 'auto' else omit }}"
+    node: "{{ proxmox_api_host }}"
+    state: present
+    timeout: 300
+    vmid: "{{ proxmox_template_id }}"
+  register: vm
+  failed_when:
+    - vm.msg != ("VM " + virtual_machine_name + " with newid " + vm.vmid | string + " cloned from vm with vmid " + proxmox_template_id | string)
+
+- name: Update LAN interface for virtual machine {{ vm.vmid }}
+  ansible.builtin.command:
+    cmd: >
+      qm set {{ vm.vmid }} --net0
+      virtio,bridge=vmbr{{ vars[proxmox_network_lan].vmbr }},tag={{ vars[proxmox_network_lan].tag }}
+  register: result
+  changed_when: "'update VM' in result.stdout"
+  failed_when: "'update VM' not in result.stdout"
+  delegate_to: "{{ proxmox_api_host }}"
+
+- name: "{{ 'Update SAN interface for virtual machine ' + vm.vmid | string + ' if needed' }}"
+  ansible.builtin.command:
+    cmd: >
+      qm set {{ vm.vmid }} --net1
+      virtio,bridge=vmbr{{ vars[proxmox_network_san].vmbr | string }}
+  register: result
+  changed_when: "'update VM' in result.stdout"
+  failed_when: "'update VM' not in result.stdout"
+  when:
+    - virtual_machine_san | length > 0
+    - template_info.net1 is defined
+  delegate_to: "{{ proxmox_api_host }}"
+
+- name: Update hardware configuration for virtual machine {{ vm.vmid }}
+  community.general.proxmox_kvm:
+    api_host: "{{ proxmox_api_host }}"
+    api_password: "{{ proxmox_api_password }}"
+    api_user: "{{ proxmox_api_user }}"
+    cores: "{{ virtual_machine_cores }}"
+    description: |-
+      # This VM is managed by Ansible
+
+      Don't make changes here - they may/will be overwritten.
+
+      Cloned: {{ lookup('pipe', 'date --utc --iso-8601=seconds') }}Z
+    memory: "{{ virtual_machine_memory }}"
+    node: "{{ proxmox_api_host }}"
+    onboot: "{{ virtual_machine_start }}"
+    state: present
+    update: true
+    vmid: "{{ vm.vmid }}"
+  register: result
+  failed_when:
+    - result.msg != ("VM None with vmid " + vm.vmid | string + " updated")
+
+- name: Increase disk size if it is necessary
+  community.general.proxmox_disk:
+    api_host: "{{ proxmox_api_host }}"
+    api_password: "{{ proxmox_api_password }}"
+    api_user: "{{ proxmox_api_user }}"
+    disk: "{{ virtual_machine_disk }}"
+    size: "+{{ disk_expand_size }}G"
+    state: resized
+    vmid: "{{ vm.vmid }}"
+
+- name: "{{ 'Update cloud-init configuration for virtual machine ' + vm.vmid | string }}"
+  community.general.proxmox_kvm:
+    api_host: "{{ proxmox_api_host }}"
+    api_password: "{{ proxmox_api_password }}"
+    api_user: "{{ proxmox_api_user }}"
+    cipassword: "{{ virtual_machine_password }}"
+    ciuser: "{{ virtual_machine_user }}"
+    ipconfig:
+      ipconfig0: "ip={{ 'dhcp' if virtual_machine_id == 'auto' else config_ip4 + ('' if not vars[proxmox_network_lan].ip6 else config_ip6) }}"
+      ipconfig1: "{{ config_san if virtual_machine_san | length > 0 else omit }}"
+    nameservers: "{{ virtual_machine_nameserver }}"
+    node: "{{ proxmox_api_host }}"
+    searchdomains: "{{ virtual_machine_searchdomain }}"
+    sshkeys: "{{ omit if ssh_keys | length == 0 else ssh_keys }}"
+    state: present
+    update: true
+    vmid: "{{ vm.vmid }}"
+  register: vm_update
+  failed_when:
+    - vm_update.msg != ("VM None with vmid " + vm.vmid | string + " updated")
+
+- name: "{{ 'Remove previous cloud-init image for virtual machine ' + vm.vmid | string }}"
+  ansible.builtin.command:
+    cmd: "qm set {{ vm.vmid }} --ide2 none,media=cdrom"
+  delegate_to: "{{ proxmox_api_host }}"
+  changed_when: true
+
+- name: "{{ 'Generate cloud-init image for virtual machine ' + vm.vmid | string }}"
+  ansible.builtin.command:
+    cmd: "qm set {{ vm.vmid }} --ide2 {{ proxmox_volume_group }}:cloudinit"
+  delegate_to: "{{ proxmox_api_host }}"
+  changed_when: true
+
+- name: "{{ 'Migrate virtual machine ' + vm.vmid | string + ' if it is necessary' }}"
+  ansible.builtin.command:
+    cmd: "qm migrate {{ virtual_machine_id }} {{ proxmox_node }}"
+  when: proxmox_node != "none"
+  delegate_to: "{{ proxmox_api_host }}"
+  changed_when: true
+
+- name: "{{ 'Start and initialize virtual machine ' + vm.vmid | string }}"
+  community.general.proxmox_kvm:
+    api_host: "{{ proxmox_node if proxmox_node != 'none' else proxmox_api_host }}"
+    api_password: "{{ proxmox_api_password }}"
+    api_user: "{{ proxmox_api_user }}"
+    node: "{{ proxmox_api_host }}"
+    state: started
+    vmid: "{{ vm.vmid }}"
+  register: result
+  failed_when:
+    - result.msg != ("VM " + vm.vmid | string + " started")

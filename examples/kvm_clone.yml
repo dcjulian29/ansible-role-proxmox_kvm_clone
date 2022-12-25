@@ -1,0 +1,60 @@
+---
+- name: Prompt for values needed for Proxmox hosts.
+  gather_facts: false
+  hosts: localhost
+  vars_prompt:
+    - name: proxmox_api_host
+      prompt: "Proxmox Node where template is"
+
+    - name: proxmox_api_user
+      prompt: "Proxmox User Name"
+      default: ansible@pam
+
+    - name: proxmox_api_password
+      prompt: "Proxmox User Password"
+      private: true
+
+    - name: proxmox_node
+      prompt: "Proxmox Node to clone VM to"
+      private: false
+      default: none
+
+    - name: proxmox_network_lan
+      prompt: "Network Associated For LAN"
+      private: false
+      default: vlan193
+
+    - name: proxmox_network_san
+      prompt: "Network Associated For SAN"
+      private: false
+      default: ""
+
+    - name: virtual_machine_name
+      prompt: "Virtual Machine Name"
+      private: false
+      default: "testvm"
+
+    - name: virtual_machine_id
+      prompt: "Virtual Machine ID"
+      private: false
+      default: auto
+
+    - name: virtual_machine_cores
+      prompt: "Virtual Machine Cores"
+      private: false
+      default: 2
+
+    - name: virtual_machine_memory
+      prompt: "Virtual Machine RAM Memory (MB)"
+      private: false
+      default: 2048
+
+    - name: virtual_machine_user
+      prompt: "Virtual Machine User Name"
+
+    - name: virtual_machine_password
+      prompt: "Virtual Machine User Password"
+      private: true
+
+  roles:
+    - role: dcjulian29.proxmox_kvm_clone
