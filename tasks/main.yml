@@ -45,6 +45,7 @@
   register: vm
   failed_when:
     - vm.msg != ("VM " + virtual_machine_name + " with newid " + vm.vmid | string + " cloned from vm with vmid " + proxmox_template_id | string)
+  delegate_to: "{{ proxmox_api_host }}"
 
 - name: Update LAN interface for virtual machine {{ vm.vmid }}
   ansible.builtin.command:
@@ -90,6 +91,7 @@
   register: result
   failed_when:
     - result.msg != ("VM None with vmid " + vm.vmid | string + " updated")
+  delegate_to: "{{ proxmox_api_host }}"
 
 - name: Increase disk size if it is necessary
   community.general.proxmox_disk:
@@ -100,6 +102,7 @@
     size: "+{{ disk_expand_size }}G"
     state: resized
     vmid: "{{ vm.vmid }}"
+  delegate_to: "{{ proxmox_api_host }}"
 
 - name: "{{ 'Update cloud-init configuration for virtual machine ' + vm.vmid | string }}"
   community.general.proxmox_kvm:
@@ -121,6 +124,7 @@
   register: vm_update
   failed_when:
     - vm_update.msg != ("VM None with vmid " + vm.vmid | string + " updated")
+  delegate_to: "{{ proxmox_api_host }}"
 
 - name: "{{ 'Remove previous cloud-init image for virtual machine ' + vm.vmid | string }}"
   ansible.builtin.command:
@@ -152,3 +156,4 @@
   register: result
   failed_when:
     - result.msg != ("VM " + vm.vmid | string + " started")
+  delegate_to: "{{ proxmox_api_host }}"
