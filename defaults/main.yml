@@ -1,16 +1,16 @@
 ---
 ## Provided by Playbook
 
-proxmox_api_host: "" # Provided by Playbook
-proxmox_api_user: "" # Provided by Playbook
-proxmox_api_password: "" # Provided by Playbook
-proxmox_network_lan: "" # Provided by Playbook
-proxmox_network_san: "" # Provided by Playbook
-proxmox_node: "" # Provided by Playbook
-virtual_machine_id: auto # Provided by Playbook
-virtual_machine_password: "ubuntu" # Provided by Playbook
-virtual_machine_user: "ubuntu" # Provided by Playbook
-virtual_machine_name: "testvm" # Provided by Playbook
+proxmox_api_host: ""
+proxmox_api_user: ""
+proxmox_api_password: ""
+proxmox_network_lan: ""
+proxmox_network_san: ""
+proxmox_node: ""
+virtual_machine_id: auto
+virtual_machine_password: ubuntu
+virtual_machine_user: ubuntu
+virtual_machine_name: testvm
 
 ## Other, may be overridden in Playbook
 
