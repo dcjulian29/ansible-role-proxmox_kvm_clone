@@ -14,6 +14,46 @@
     state: present
   delegate_to: "{{ proxmox_api_host }}"
 
+- name: "{{ ('Grab ID of existing virtual machine \"' + virtual_machine_name + '\"') }}"
+  community.general.proxmox_kvm:
+    api_host: "{{ proxmox_api_host }}"
+    api_password: "{{ proxmox_api_password }}"
+    api_user: "{{ proxmox_api_user }}"
+    name: "{{ virtual_machine_name }}"
+    node: "{{ proxmox_api_host }}"
+    state: current
+  changed_when: false
+  failed_when: false
+  register: vme
+  delegate_to: "{{ proxmox_api_host }}"
+
+- name: "{{ ('Stop existing virtual machine named \"' + virtual_machine_name + '\"') }}"
+  community.general.proxmox_kvm:
+    api_host: "{{ proxmox_api_host }}"
+    api_password: "{{ proxmox_api_password }}"
+    api_user: "{{ proxmox_api_user }}"
+    node: "{{ proxmox_api_host }}"
+    state: stopped
+    vmid: "{{ vme.vmid }}"
+  when:
+    - vme.msg is defined and vme.msg != ("VM with name = " + virtual_machine_name + " does not exist in cluster")
+    - vme.vmid > 0
+    - vme.status == "running"
+  delegate_to: "{{ proxmox_api_host }}"
+
+- name: "{{ ('Remove existing virtual machine named \"' + virtual_machine_name + '\"') }}"
+  community.general.proxmox_kvm:
+    api_host: "{{ proxmox_api_host }}"
+    api_password: "{{ proxmox_api_password }}"
+    api_user: "{{ proxmox_api_user }}"
+    node: "{{ proxmox_api_host }}"
+    state: absent
+    vmid: "{{ vme.vmid }}"
+  when:
+    - vme.msg is defined and vme.msg != ("VM with name = " + virtual_machine_name + " does not exist in cluster")
+    - vme.vmid > 0
+  delegate_to: "{{ proxmox_api_host }}"
+
 - name: Retrieve template information
   ansible.builtin.command:
     cmd: "cat /etc/pve/qemu-server/{{ proxmox_template_id }}.conf"
