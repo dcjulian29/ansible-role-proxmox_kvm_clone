@@ -6,7 +6,7 @@ proxmox_api_user: ""
 proxmox_api_password: ""
 proxmox_network_lan: ""
 proxmox_network_san: ""
-proxmox_node: ""
+proxmox_node: none
 virtual_machine_id: auto
 virtual_machine_password: ubuntu
 virtual_machine_user: ubuntu
@@ -17,8 +17,10 @@ virtual_machine_name: testvm
 disk_expand_size: 17.8
 proxmox_template_id: 9999
 proxmox_volume_group: mpio
+virtual_machine_cores: 2
 virtual_machine_disk: scsi0
 virtual_machine_expand_disk: true
+virtual_machine_memory: 2048
 virtual_machine_nameserver: "{{ vars[proxmox_network_lan].dnsservers | split(' ') }}"
 virtual_machine_searchdomain: "{{ vars[proxmox_network_lan].searchdomain | split(' ') }}"
 virtual_machine_start: true
