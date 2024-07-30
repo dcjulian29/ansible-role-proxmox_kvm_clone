@@ -4,7 +4,8 @@ galaxy_info:
   author: Julian Easterling
   description: Ansible Role to clone KVM-based VMs.
   galaxy_tags:
-    - proxmox_kvm_clone
+    - kvm
+    - clone
     - proxmox
     - dcjulian29
   license: Apache-2.0

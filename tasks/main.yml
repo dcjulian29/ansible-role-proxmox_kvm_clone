@@ -84,7 +84,9 @@
     vmid: "{{ proxmox_template_id }}"
   register: vm
   failed_when:
-    - vm.msg != ("VM " + virtual_machine_name + " with newid " + vm.vmid | string + " cloned from vm with vmid " + proxmox_template_id | string)
+    - >-
+      vm.msg != ("VM " + virtual_machine_name + " with newid " + vm.vmid | string
+      + " cloned from vm with vmid " + proxmox_template_id | string)
   delegate_to: "{{ proxmox_api_host }}"
 
 - name: Update LAN interface for virtual machine {{ vm.vmid }}
@@ -152,7 +154,9 @@
     cipassword: "{{ virtual_machine_password }}"
     ciuser: "{{ virtual_machine_user }}"
     ipconfig:
-      ipconfig0: "ip={{ 'dhcp' if virtual_machine_id == 'auto' else config_ip4 + ('' if not vars[proxmox_network_lan].ip6 else config_ip6) }}"
+      ipconfig0: >-
+        "ip={{ 'dhcp' if virtual_machine_id == 'auto' else config_ip4
+        + ('' if not vars[proxmox_network_lan].ip6 else config_ip6) }}"
       ipconfig1: "{{ config_san if virtual_machine_san | length > 0 else omit }}"
     nameservers: "{{ virtual_machine_nameserver }}"
     node: "{{ proxmox_api_host }}"
