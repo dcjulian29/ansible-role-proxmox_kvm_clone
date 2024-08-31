@@ -185,7 +185,9 @@
 - name: "{{ 'Migrate virtual machine ' + vm.vmid | string + ' if it is necessary' }}"
   ansible.builtin.command:
     cmd: "qm migrate {{ virtual_machine_id }} {{ proxmox_node }}"
-  when: proxmox_node != "none"
+  when:
+    - proxmox_node != "none"
+    - proxmox_node | length > 0
   delegate_to: "{{ proxmox_api_host }}"
   changed_when: true
 
