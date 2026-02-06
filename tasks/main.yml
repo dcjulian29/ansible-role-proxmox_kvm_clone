@@ -93,7 +93,7 @@
   ansible.builtin.command:
     cmd: >
       qm set {{ vm.vmid }} --net0
-      virtio,bridge=vmbr{{ vars[proxmox_network_lan].vmbr }},tag={{ vars[proxmox_network_lan].tag }}
+      virtio,bridge=vmbr{{ networks[proxmox_network_lan].vmbr }},tag={{ networks[proxmox_network_lan].tag }}
   register: result
   changed_when: "'update VM' in result.stdout"
   failed_when: "'update VM' not in result.stdout"
@@ -103,7 +103,7 @@
   ansible.builtin.command:
     cmd: >
       qm set {{ vm.vmid }} --net1
-      virtio,bridge=vmbr{{ vars[proxmox_network_san].vmbr | string }}
+      virtio,bridge=vmbr{{ networks[proxmox_network_san].vmbr | string }}
   register: result
   changed_when: "'update VM' in result.stdout"
   failed_when: "'update VM' not in result.stdout"
@@ -156,7 +156,7 @@
     ipconfig:
       ipconfig0: >-
         "ip={{ 'dhcp' if virtual_machine_id == 'auto' else config_ip4
-        + ('' if not vars[proxmox_network_lan].ip6 else config_ip6) }}"
+        + ('' if not networks[proxmox_network_lan].ip6 else config_ip6) }}"
       ipconfig1: "{{ config_san if virtual_machine_san | length > 0 else omit }}"
     nameservers: "{{ virtual_machine_nameserver }}"
     node: "{{ proxmox_api_host }}"
