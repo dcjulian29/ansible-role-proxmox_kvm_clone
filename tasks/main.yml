@@ -8,14 +8,15 @@
     - python3-pip
     - libguestfs-tools
 
-- name: Verify if proxmoxer pip module is installed on the Proxmox node
+- name: Ensure proxmoxer (>= 2.3) pip module is installed on the Proxmox node
   ansible.builtin.pip:
-    name: proxmoxer
+    name: "proxmoxer>=2.3"
     state: present
+    extra_args: "--break-system-packages"
   delegate_to: "{{ proxmox_api_host }}"
 
 - name: "{{ ('Grab ID of existing virtual machine \"' + virtual_machine_name + '\"') }}"
-  community.general.proxmox_kvm:
+  community.proxmox.proxmox_kvm:
     api_host: "{{ proxmox_api_host }}"
     api_password: "{{ proxmox_api_password }}"
     api_user: "{{ proxmox_api_user }}"
@@ -23,12 +24,14 @@
     node: "{{ proxmox_api_host }}"
     state: current
   changed_when: false
-  failed_when: false
+  failed_when:
+    - vme.failed | default(false)
+    - "'does not exist' not in (vme.msg | default(''))"
   register: vme
   delegate_to: "{{ proxmox_api_host }}"
 
 - name: "{{ ('Stop existing virtual machine named \"' + virtual_machine_name + '\"') }}"
-  community.general.proxmox_kvm:
+  community.proxmox.proxmox_kvm:
     api_host: "{{ proxmox_api_host }}"
     api_password: "{{ proxmox_api_password }}"
     api_user: "{{ proxmox_api_user }}"
@@ -36,13 +39,13 @@
     state: stopped
     vmid: "{{ vme.vmid }}"
   when:
-    - vme.msg is defined and vme.msg != ("VM with name = " + virtual_machine_name + " does not exist in cluster")
-    - vme.vmid > 0
-    - vme.status == "running"
+    - vme.vmid is defined
+    - (vme.vmid | int) > 0
+    - vme.status | default('') == "running"
   delegate_to: "{{ proxmox_api_host }}"
 
 - name: "{{ ('Remove existing virtual machine named \"' + virtual_machine_name + '\"') }}"
-  community.general.proxmox_kvm:
+  community.proxmox.proxmox_kvm:
     api_host: "{{ proxmox_api_host }}"
     api_password: "{{ proxmox_api_password }}"
     api_user: "{{ proxmox_api_user }}"
@@ -50,8 +53,8 @@
     state: absent
     vmid: "{{ vme.vmid }}"
   when:
-    - vme.msg is defined and vme.msg != ("VM with name = " + virtual_machine_name + " does not exist in cluster")
-    - vme.vmid > 0
+    - vme.vmid is defined
+    - (vme.vmid | int) > 0
   delegate_to: "{{ proxmox_api_host }}"
 
 - name: Retrieve template information
@@ -70,7 +73,7 @@
     ((template_info.net1 is not defined) and (virtual_machine_san | length > 0))
 
 - name: "{{ 'Clone template ' + proxmox_template_id | string + ' to new virtual machine named: ' + virtual_machine_name }}"
-  community.general.proxmox_kvm:
+  community.proxmox.proxmox_kvm:
     api_user: "{{ proxmox_api_user }}"
     api_password: "{{ proxmox_api_password }}"
     api_host: "{{ proxmox_api_host }}"
@@ -83,10 +86,9 @@
     timeout: 300
     vmid: "{{ proxmox_template_id }}"
   register: vm
-  failed_when:
-    - >-
-      vm.msg != ("VM " + virtual_machine_name + " with newid " + vm.vmid | string
-      + " cloned from vm with vmid " + proxmox_template_id | string)
+  failed_when: >-
+    vm is failed or
+    not (vm.msg | default('') | lower is search('cloned'))
   delegate_to: "{{ proxmox_api_host }}"
 
 - name: Update LAN interface for virtual machine {{ vm.vmid }}
@@ -113,7 +115,7 @@
   delegate_to: "{{ proxmox_api_host }}"
 
 - name: Update hardware configuration for virtual machine {{ vm.vmid }}
-  community.general.proxmox_kvm:
+  community.proxmox.proxmox_kvm:
     api_host: "{{ proxmox_api_host }}"
     api_password: "{{ proxmox_api_password }}"
     api_user: "{{ proxmox_api_user }}"
@@ -131,12 +133,13 @@
     update: true
     vmid: "{{ vm.vmid }}"
   register: result
-  failed_when:
-    - result.msg != ("VM None with vmid " + vm.vmid | string + " updated")
+  failed_when: >-
+    result is failed or
+    not (result.msg | default('') | lower is search('updated'))
   delegate_to: "{{ proxmox_api_host }}"
 
 - name: Increase disk size if it is necessary
-  community.general.proxmox_disk:
+  community.proxmox.proxmox_disk:
     api_host: "{{ proxmox_api_host }}"
     api_password: "{{ proxmox_api_password }}"
     api_user: "{{ proxmox_api_user }}"
@@ -147,7 +150,7 @@
   delegate_to: "{{ proxmox_api_host }}"
 
 - name: "{{ 'Update cloud-init configuration for virtual machine ' + vm.vmid | string }}"
-  community.general.proxmox_kvm:
+  community.proxmox.proxmox_kvm:
     api_host: "{{ proxmox_api_host }}"
     api_password: "{{ proxmox_api_password }}"
     api_user: "{{ proxmox_api_user }}"
@@ -166,8 +169,9 @@
     update: true
     vmid: "{{ vm.vmid }}"
   register: vm_update
-  failed_when:
-    - vm_update.msg != ("VM None with vmid " + vm.vmid | string + " updated")
+  failed_when: >-
+    vm_update is failed or
+    not (vm_update.msg | default('') | lower is search('updated'))
   delegate_to: "{{ proxmox_api_host }}"
 
 - name: "{{ 'Remove previous cloud-init image for virtual machine ' + vm.vmid | string }}"
@@ -192,7 +196,7 @@
   changed_when: true
 
 - name: "{{ 'Start and initialize virtual machine ' + vm.vmid | string }}"
-  community.general.proxmox_kvm:
+  community.proxmox.proxmox_kvm:
     api_host: "{{ proxmox_node if proxmox_node != 'none' else proxmox_api_host }}"
     api_password: "{{ proxmox_api_password }}"
     api_user: "{{ proxmox_api_user }}"
@@ -200,6 +204,7 @@
     state: started
     vmid: "{{ vm.vmid }}"
   register: result
-  failed_when:
-    - result.msg != ("VM " + vm.vmid | string + " started")
+  failed_when: >-
+    result is failed or
+    not (result.msg | default('') | lower is search('start|running'))
   delegate_to: "{{ proxmox_api_host }}"
