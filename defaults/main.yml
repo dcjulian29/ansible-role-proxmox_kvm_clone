@@ -2,6 +2,9 @@
 ## Provided by Playbook
 
 proxmox_api_host: ""
+# Host used for the API connection / TLS verification. Defaults to the node
+# name; override with the FQDN when the API certificate uses one.
+proxmox_api_endpoint: "{{ proxmox_api_host }}"
 proxmox_api_user: ""
 proxmox_api_password: ""
 proxmox_network_lan: ""
@@ -45,4 +48,4 @@ virtual_machine_ip4: "{{ networks[proxmox_network_lan].ip4_prefix }}.{{ virtual_
 virtual_machine_ip6: >-
   "{{ '' if not networks[proxmox_network_lan].ip6 else networks[proxmox_network_lan].ip6_prefix
   + '::' + virtual_machine_hex }}"
-virtual_machine_san: "{{ san_prefix + '.' + virtual_machine_int if san_prefix | length > 0 else '' }}"
+virtual_machine_san: "{{ san_prefix + '.' + (virtual_machine_int | string) if san_prefix | length > 0 else '' }}"
