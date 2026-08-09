@@ -1,11 +1,13 @@
 ---
+skip_list: []
+
 warn_list:
   - experimental
 
 kinds:
-  - playbook: "**/examples/*.yml"
-  - tasks: "**/tasks/*.yml"
-  - vars: "**/vars/*.yml"
+  - playbook: "**/examples/*.{yml,yaml}"
+  - tasks: "**/tasks/*.{yml,yaml}"
+  - vars: "**/vars/*.{yml,yaml}"
   - meta: "**/meta/main.yml"
   - yaml: "**/*.{yml,yaml}"
 
