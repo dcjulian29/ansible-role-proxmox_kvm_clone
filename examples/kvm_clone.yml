@@ -42,12 +42,12 @@
     - name: virtual_machine_cores
       prompt: "Virtual Machine Cores"
       private: false
-      default: 2
+      default: "2"
 
     - name: virtual_machine_memory
       prompt: "Virtual Machine RAM Memory (MB)"
       private: false
-      default: 2048
+      default: "2048"
 
     - name: virtual_machine_user
       prompt: "Virtual Machine User Name"
