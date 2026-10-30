@@ -20,6 +20,11 @@ virtual_machine_name: testvm
 disk_expand_size: 17.8
 proxmox_template_id: 9999
 proxmox_volume_group: mpio
+# VLAN arriving untagged (the native/PVID VLAN) on the node's bridge. A network
+# whose tag matches gets tag=1, the bridge's VLAN for untagged frames: PVE
+# trunks every VLAN to a NIC with no tag (Windows guests pick those up), and
+# switches typically drop frames tagged with the native VLAN ID. 0 disables it.
+proxmox_untagged_vlan: 0
 virtual_machine_cores: 2
 virtual_machine_disk: scsi0
 virtual_machine_expand_disk: true
@@ -37,6 +42,9 @@ config_ip6: >-
   ",ip6={{ virtual_machine_ip6 }}/{{ networks[proxmox_network_lan].ip6_netmask | string }}
   ,gw6={{ networks[proxmox_network_lan].ip6_gateway }}"
 config_san: "ip={{ virtual_machine_san }}/{{ san_netmask }}"
+lan_tag: >-
+  {{ 1 if networks[proxmox_network_lan].tag | int == proxmox_untagged_vlan | int
+  else networks[proxmox_network_lan].tag | int }}
 san_netmask: "{{ networks[proxmox_network_san].ip4_netmask | default('') | string }}"
 san_prefix: "{{ networks[proxmox_network_san].ip4_prefix | default('') }}"
 ssh_keys: >-
