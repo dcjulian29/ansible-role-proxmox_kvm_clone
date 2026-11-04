@@ -37,6 +37,20 @@
   register: vme
   delegate_to: "{{ proxmox_api_host }}"
 
+# Before the stop, not just the destroy: Proxmox hands a stop of an HA-managed
+# VM to the HA manager, and refuses to destroy one. Not gated on
+# virtual_machine_ha, so a VM whose HA was turned off since its last run is
+# still released; for an unmanaged VM this changes nothing.
+- name: "{{ ('Take existing virtual machine \"' + virtual_machine_name + '\" out of HA') }}"
+  ansible.builtin.include_role:
+    name: dcjulian29.proxmox_ha
+    tasks_from: leave
+  vars:
+    proxmox_ha_resource: "vm:{{ vme.vmid }}"
+  when:
+    - vme.vmid is defined
+    - (vme.vmid | int) > 0
+
 - name: "{{ ('Stop existing virtual machine named \"' + virtual_machine_name + '\"') }}"
   community.proxmox.proxmox_kvm:
     api_host: "{{ proxmox_api_endpoint }}"
@@ -215,3 +229,15 @@
     result is failed or
     not (result.msg | default('') | lower is search('start|running'))
   delegate_to: "{{ proxmox_api_host }}"
+
+# Last, after the migrate and the start: a migrate of an HA-managed VM is
+# handed to the HA manager, and the HA manager should take over a running VM
+# instead of racing the role to start it.
+- name: "{{ 'Put virtual machine ' + vm.vmid | string + ' under HA and into its HA rules' }}"
+  ansible.builtin.include_role:
+    name: dcjulian29.proxmox_ha
+    tasks_from: join
+  vars:
+    proxmox_ha_resource: "vm:{{ vm.vmid }}"
+    proxmox_ha_rule_names: "{{ virtual_machine_ha_rules }}"
+  when: virtual_machine_ha | bool

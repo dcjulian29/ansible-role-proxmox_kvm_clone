@@ -28,6 +28,8 @@ proxmox_untagged_vlan: 0
 virtual_machine_cores: 2
 virtual_machine_disk: scsi0
 virtual_machine_expand_disk: true
+virtual_machine_ha: false
+virtual_machine_ha_rules: []
 virtual_machine_memory: 2048
 virtual_machine_nameserver: "{{ networks[proxmox_network_lan].dnsservers | split(' ') }}"
 virtual_machine_searchdomain: "{{ networks[proxmox_network_lan].searchdomain | split(' ') }}"
