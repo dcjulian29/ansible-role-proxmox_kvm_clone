@@ -38,11 +38,11 @@ virtual_machine_start: true
 ## Computed Values
 
 config_ip4: >-
-  "{{ virtual_machine_ip4 + '/' + networks[proxmox_network_lan].ip4_netmask | string
-  + ',gw=' + networks[proxmox_network_lan].ip4_gateway }}"
+  {{ virtual_machine_ip4 + '/' + networks[proxmox_network_lan].ip4_netmask | string
+  + ',gw=' + networks[proxmox_network_lan].ip4_gateway }}
 config_ip6: >-
-  ",ip6={{ virtual_machine_ip6 }}/{{ networks[proxmox_network_lan].ip6_netmask | string }}
-  ,gw6={{ networks[proxmox_network_lan].ip6_gateway }}"
+  ,ip6={{ virtual_machine_ip6 }}/{{ networks[proxmox_network_lan].ip6_netmask | string
+  }},gw6={{ networks[proxmox_network_lan].ip6_gateway }}
 config_san: "ip={{ virtual_machine_san }}/{{ san_netmask }}"
 lan_tag: >-
   {{ 1 if networks[proxmox_network_lan].tag | int == proxmox_untagged_vlan | int
@@ -50,12 +50,12 @@ lan_tag: >-
 san_netmask: "{{ networks[proxmox_network_san].ip4_netmask | default('') | string }}"
 san_prefix: "{{ networks[proxmox_network_san].ip4_prefix | default('') }}"
 ssh_keys: >-
-  "{{ lookup('ansible.builtin.file', 'sshpub/' + virtual_machine_name
-  + '.key.pub', errors='ignore') }}"
+  {{ lookup('ansible.builtin.file', 'sshpub/' + virtual_machine_name
+  + '.key.pub', errors='ignore') | default('', true) | trim }}
 virtual_machine_hex: "{{ '%04x' | format((virtual_machine_int | int * virtual_machine_int | int) | int) }}"
 virtual_machine_int: "{{ 1 if virtual_machine_id == 'auto' else (virtual_machine_id | string)[-3:] | int }}"
 virtual_machine_ip4: "{{ networks[proxmox_network_lan].ip4_prefix }}.{{ virtual_machine_int }}"
 virtual_machine_ip6: >-
-  "{{ '' if not networks[proxmox_network_lan].ip6 else networks[proxmox_network_lan].ip6_prefix
-  + '::' + virtual_machine_hex }}"
+  {{ '' if not networks[proxmox_network_lan].ip6 else networks[proxmox_network_lan].ip6_prefix
+  + '::' + virtual_machine_hex }}
 virtual_machine_san: "{{ san_prefix + '.' + (virtual_machine_int | string) if san_prefix | length > 0 else '' }}"
