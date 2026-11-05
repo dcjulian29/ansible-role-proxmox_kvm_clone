@@ -33,6 +33,7 @@ virtual_machine_ha_rules: []
 virtual_machine_memory: 2048
 virtual_machine_nameserver: "{{ networks[proxmox_network_lan].dnsservers | split(' ') }}"
 virtual_machine_searchdomain: "{{ networks[proxmox_network_lan].searchdomain | split(' ') }}"
+virtual_machine_ssh_key_file: "~/.ssh/{{ virtual_machine_name }}.key.pub"
 virtual_machine_start: true
 
 ## Computed Values
@@ -50,8 +51,8 @@ lan_tag: >-
 san_netmask: "{{ networks[proxmox_network_san].ip4_netmask | default('') | string }}"
 san_prefix: "{{ networks[proxmox_network_san].ip4_prefix | default('') }}"
 ssh_keys: >-
-  {{ lookup('ansible.builtin.file', 'sshpub/' + virtual_machine_name
-  + '.key.pub', errors='ignore') | default('', true) | trim }}
+  {{ lookup('ansible.builtin.file', virtual_machine_ssh_key_file, errors='ignore')
+  | default('', true) | trim }}
 virtual_machine_hex: "{{ '%04x' | format((virtual_machine_int | int * virtual_machine_int | int) | int) }}"
 virtual_machine_int: "{{ 1 if virtual_machine_id == 'auto' else (virtual_machine_id | string)[-3:] | int }}"
 virtual_machine_ip4: "{{ networks[proxmox_network_lan].ip4_prefix }}.{{ virtual_machine_int }}"
